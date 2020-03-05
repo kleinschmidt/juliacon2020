@@ -11,20 +11,20 @@ Julia language?
 
 Transforming tabular, heterogenous data into numerical arrays is a critical
 first step in many data analysis pipelines.  StatsModels.jl provides
-functionality for this through the `@formula` macro.
+functionality for this through the ~@formula~ macro.
 
-The earliest implementations of the `@formula` in StatsModels.jl were based on
+The earliest implementations of the ~@formula~ in StatsModels.jl were based on
 R, which has a very different model for metaprogramming and composition across
-packages.  Over the last two years, we re-implemented the `@formula` from the
+packages.  Over the last two years, we re-implemented the ~@formula~ from the
 ground up in a more Julian fashion, with a focus on creating a hackable,
 flexible, modular, and extensible platform for table-to-array transformations
 that others can build on.
 
-In this talk, I'll show you how the current implementation works and what we
-learned in the process of rewriting this critical piece of data science
-infrastructure.  I'll pay special attention to mistakes we made in initial
-development, lessons we learned from those mistakes about how to make a
-flexible, composable package, and issues for current and future development.
-You'll learn how StatsModels.jl takes advantage of multiple dispatch to allow
-other packages to hook into and extend the `@formula` system while still playing
-nicely together.
+In this talk, I'll show you how the current implementation achieves these goals,
+but more importantly what we /learned/ in the process of rewriting this critical
+piece of data science infrastructure.  I'll pay special attention to mistakes we
+made in initial development, lessons we learned from those mistakes about how to
+make a flexible, composable package, and issues for current and future
+development.  You'll learn how StatsModels.jl takes advantage of multiple
+dispatch to allow other packages to hook into and extend the ~@formula~ system
+while still playing nicely together.
