@@ -4,8 +4,8 @@
 * 250 char summary
 
 What happens when you try to re-implement a critical piece of the data science
-ecosystem from what was essentially an R clone to take full advantage of Julia's
-composability?
+ecosystem from what was essentially an R clone to take full advantage of the
+Julia language?
 
 * 2500 (500 word) abstract
 
@@ -15,7 +15,7 @@ functionality for this through the `@formula` macro.
 
 The earliest implementations of the `@formula` in StatsModels.jl were based on
 R, which has a very different model for metaprogramming and composition across
-packages.  In the last two years, we re-implemented the `@formula` from the
+packages.  Over the last two years, we re-implemented the `@formula` from the
 ground up in a more Julian fashion, with a focus on creating a hackable,
 flexible, modular, and extensible platform for table-to-array transformations
 that others can build on.
@@ -25,4 +25,6 @@ learned in the process of rewriting this critical piece of data science
 infrastructure.  I'll pay special attention to mistakes we made in initial
 development, lessons we learned from those mistakes about how to make a
 flexible, composable package, and issues for current and future development.
-You'll learn how StatsModels.jl takes advantage of multiple dispatch to allow 
+You'll learn how StatsModels.jl takes advantage of multiple dispatch to allow
+other packages to hook into and extend the `@formula` system while still playing
+nicely together.
