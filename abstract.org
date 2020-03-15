@@ -3,9 +3,10 @@
 
 * 250 char summary
 
-What happens when you try to re-implement a critical piece of the data science
+What happens when you re-implement a critical piece of the data science
 ecosystem from what was essentially an R clone to take full advantage of the
-Julia language?
+Julia language?  You learn a lot about flexibility, composability, and
+performance.
 
 * 2500 (500 word) abstract
 
@@ -13,12 +14,13 @@ Transforming tabular, heterogenous data into numerical arrays is a critical
 first step in many data analysis pipelines.  StatsModels.jl provides
 functionality for this through the ~@formula~ macro.
 
-The earliest implementations of the ~@formula~ in StatsModels.jl were based on
-R, which has a very different model for metaprogramming and composition across
-packages.  Over the last two years, we re-implemented the ~@formula~ from the
-ground up in a more Julian fashion, with a focus on creating a hackable,
-flexible, modular, and extensible platform for table-to-array transformations
-that others can build on.
+The earliest implementations of ~@formula~ in Julia were based on R, which has a
+very different model for metaprogramming and composition across packages.  Over
+the last two years, we re-implemented the ~@formula~ from the ground up in a
+more Julian fashion, trying to strike a balance between maintaining a
+continuous, familiar experience for front-end users while also taking advantage
+of Julia's many features to create a hackable, flexible, modular, and extensible
+platform that other packages can build on.
 
 In this talk, I'll show you how the current implementation achieves these goals,
 but more importantly what we /learned/ in the process of rewriting this critical
@@ -26,5 +28,5 @@ piece of data science infrastructure.  I'll pay special attention to mistakes we
 made in initial development, lessons we learned from those mistakes about how to
 make a flexible, composable package, and issues for current and future
 development.  You'll learn how StatsModels.jl takes advantage of multiple
-dispatch to allow other packages to hook into and extend the ~@formula~ system
+dispatch to allow /other/ packages to hook into and extend the ~@formula~ system
 while still playing nicely together.
