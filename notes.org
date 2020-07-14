@@ -1,0 +1,80 @@
+* ideas
+** this is basically the same talk as last year
+   why am I giving the same talk again?  well two years ago this was just a PR
+
+   "hello and welcome to JuliaCon 2018...wait"
+
+   "who am I...I'm an untenured psychology professor who has trouble
+   prioritizing important things (too much time on my hands and not enough good
+   sense), which is why I spent the better part of a year tearing down and
+   rebuilding from scratch some perfectly serviceable-if-slightly non-idiomatic
+   julia code to turn data frames and other tabular data into numerical
+   matrices."
+
+   timeline of the @formula history
+** problems with the dataframes version
+   only interface was via the formula macro.  almost impossible to construct
+   the intermediate representations at "run time" and so there's lots of
+   pressure to cram every feature imaginable into the formula DSL.  not good.
+
+   DataFrames.jl is a "heavy dependency" and so people are unwilling to take a
+   dependency on this package -> have to try to support every imaginable use
+   case for modeling packages...lowest common demoninator
+
+** themes
+   composability - both the formula/term representations, and with the Tables.jl
+   ecosystem.  explains some design choices, like why functions are always
+   applied elementwise.  creates some problems, because now there are a lot of
+   locally simple parts that interact in potentially complex ways.  it's a lot
+   for new users/developers to get their heads around.  but I still think it's
+   better than having a smaller number of more restrictive but still complex
+   moving parts
+
+   
+** organizing by past/present/future
+   
+*** past: DataFrames.jl
+    focus is on why this wasn't adequate
+
+    recent pass was #71 (?)...some good ideas there but ultimately it was
+    completely wrong in a lot of interesting ways.  first was
+    composability... second is performance, we're paying  ap
+    
+*** present
+    goal is to show here what's possible and how it works
+
+    flexible: can use any* function you'd like (as long as it's applied
+    elementwise).
+    
+    composable: works with any Table, including row-oriented tables.  split
+    things out into three stages: macro time, schema time, and data time.
+    possible example with OnlineStats?  should be pretty easy to mock up a
+    regression fit with formula.
+
+    hackable: internal representations are things you can work with and
+    manipulate.  example: [[https://github.com/Nosferican/Econometrics.jl/blob/ac31d9019971dd2aedf8a1b2f519e3f00bf7138b/src/formula.jl][Econometrics.jl pulls out nested formula]] terms to
+    represent endgenous/instrumental variables.  programmatic model comparison
+    by re-arranging formula [[https://github.com/RePsychLing/addFixef/blob/master/addFixef.ipynb][(Laurel Brehm's example from ZiF workshop)]].
+    
+    extensible: MixedModels.jl - random effects terms, nesting syntax,
+    controlling the correlation structure with ~zerocorr~.
+    
+*** future, 
+    things people are building: unfold.jl, MixedModels.jl.
+
+    under the rubric of "row-oriented" transformations: dropping missing values,
+    grouping, time series (lead/lag) operations.  these are a bit trickier
+    because we want to support row-oriented tables as first-class citizens
+
+**** design issues: 
+     idea that schema should be model-independent causes all kinds of problems.
+     for instance, splines need different invariants than are available; not all
+     categorical variables are destined for contrast/one-hot encoding; etc.
+
+     we're hitting the compiler really hard...contributing to that is the fact
+     that every non-special call gets compiled into its own anonymous function,
+     so even if you run the same formula twice you'll still have to recompile
+     everything.  polymorphism is great but it also leads to a lot of extra
+     compilation.  and putting type parameters on EVERYTHING allows the compile
+     to reason about the structure of the model but...also makes the compiler
+     reason about the structure of everything.
