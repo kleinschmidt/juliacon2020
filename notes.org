@@ -11,7 +11,7 @@
    julia code to turn data frames and other tabular data into numerical
    matrices."
 
-   timeline of the @formula history
+   timeline of the @formula history.
 ** problems with the dataframes version
    only interface was via the formula macro.  almost impossible to construct
    the intermediate representations at "run time" and so there's lots of
@@ -22,34 +22,61 @@
    case for modeling packages...lowest common demoninator
 
 ** themes
-   composability - both the formula/term representations, and with the Tables.jl
-   ecosystem.  explains some design choices, like why functions are always
-   applied elementwise.  creates some problems, because now there are a lot of
-   locally simple parts that interact in potentially complex ways.  it's a lot
-   for new users/developers to get their heads around.  but I still think it's
-   better than having a smaller number of more restrictive but still complex
-   moving parts
+   composable - play well with others, as few high walls, moats, and black
+   boxes as possible.  both the formula/term representations, and with the
+   Tables.jl ecosystem.  explains some design choices, like why functions are
+   always applied elementwise.  creates some problems, because now there are a
+   lot of locally simple parts that interact in potentially complex ways.  it's
+   a lot for new users/developers to get their heads around.  but I still think
+   it's better than having a smaller number of more restrictive but still
+   complex moving parts
 
+   hackable - power users can get in and muck around with the internal
+   representations in a way that's well-documented and not "out of scope" for
+   the package.  this reduces the likelihood that people are going to rely on
+   "non-public" API of your package and suffer more from breaking changes
+
+   extensible - provides means for other packages to not only USE your package
+   but also EXTEND your package's functionality.  corrolary of this is that new
+   features don't HAVE to go into your package, they can be provided elsewhere
+   
+
+   (performance): was fine, but this stage isn't usually the bottleneck in
+   modeling.
+   
+** lessons learned
+   tests are great
+
+   more information for the compiler isn't always better
+
+   naming things is hard
    
 ** organizing by past/present/future
-   
+   lol this is exactly what I did last time, at least on the intro slide... but
+   here maybe it makes sense to expand it out a bit more since I'm explicitly
+   focusing on the development process and lessons learned
 *** past: DataFrames.jl
-    focus is on why this wasn't adequate
+    focus is on why this wasn't adequate.  not composable (can't use with other
+    table types), not hackable (or not easily, have to hook into a pretty
+    constrained and opaque internal representation), and not extensible (no way
+    to add other syntax)
 
-    recent pass was #71 (?)...some good ideas there but ultimately it was
+    recent past was #71 (?)...some good ideas there but ultimately it was
     completely wrong in a lot of interesting ways.  first was
-    composability... second is performance, we're paying  ap
+    composability...that's been (mostly solved).  second is performance, we're
+    paying a steep penalty for how we're representing function calls, and terms
+    in general (too many type parameters)
     
 *** present
     goal is to show here what's possible and how it works
 
-    flexible: can use any* function you'd like (as long as it's applied
-    elementwise).
+    flexible: can use any* function you'd like 
+
+    *(as long as it's applied elementwise).
     
-    composable: works with any Table, including row-oriented tables.  split
-    things out into three stages: macro time, schema time, and data time.
-    possible example with OnlineStats?  should be pretty easy to mock up a
-    regression fit with formula.
+    composable: works with any Table, including row-oriented tables (except for
+    schema construction...).  split things out into three stages: macro time,
+    schema time, and data time.  example: OnlineStats integration...
 
     hackable: internal representations are things you can work with and
     manipulate.  example: [[https://github.com/Nosferican/Econometrics.jl/blob/ac31d9019971dd2aedf8a1b2f519e3f00bf7138b/src/formula.jl][Econometrics.jl pulls out nested formula]] terms to
