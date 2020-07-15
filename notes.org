@@ -143,3 +143,34 @@
    more information for the compiler isn't always better
 
    naming things is hard
+   
+* outline
+  What is this?  Convert from tabular data (collections of heterogenously typed
+  variables) to something useful for statistical modeling/machine
+  learning/etc. (aka, a numerical array).
+
+  Why?  This is a kind of "last mile" problem between your data
+  ingestion/cleaning/preprocessing pipeline and your number crunching.  It's
+  annoying and tedious and repetitive and error prone to do it by hand and if
+  you mess it up you could end up say mixing up your coding of some variable and
+  interpreting your models results completely backwards...
+
+  goal is to have a DSL that makes it easy to do the right things and hard to do
+  dumb things.
+
+** themes
+   things that people strive for with Julia packages:
+** how does it work
+   specify formula with ~@formula~ macro.  trying to move as much stuff out of
+   this as possible because it's a black box, bad.  this creates a bunch of
+   terms.
+
+   extract a ~Schema~ that describes the important properties of your data:
+   types, unique values for categorical things
+
+   specialize the formula based on the data schema and (optionally) the type of
+   the model that's the ultimate destination for the data. ~apply_schema~
+
+   ingest tabular data, producings arrays (or whatever!) with ~modelcols~.
+
+
