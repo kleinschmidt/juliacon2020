@@ -44,13 +44,6 @@
    (performance): was fine, but this stage isn't usually the bottleneck in
    modeling.
    
-** lessons learned
-   tests are great
-
-   more information for the compiler isn't always better
-
-   naming things is hard
-   
 ** organizing by past/present/future
    lol this is exactly what I did last time, at least on the intro slide... but
    here maybe it makes sense to expand it out a bit more since I'm explicitly
@@ -66,27 +59,63 @@
     composability...that's been (mostly solved).  second is performance, we're
     paying a steep penalty for how we're representing function calls, and terms
     in general (too many type parameters)
+
+    challenge with this DSL: on the one hand, we are using some function calls
+    to have special meaning: ~+~ is feature union, ~&~ is feature interaction,
+    and ~*~ is both.  And ~~~ represents a row-wise binding of a set of response
+    and predictor features.  On the other hand, we'd also like for functions
+    that DON'T have special meaning to "just work".  So, for instance, if you
+    want to regress against a log-transformed response, you should be able to do
+    ~log(y) ~ 1 + a + b + c~ and have it Just Work™ (at least that's what you'd
+    expect coming from R.  On the other other hand, there are many cases where
+    this DSL is too restrictive to capture what you might want to do with your
+    features (examples: instrumental/endogenous variables in econometrics,
+    random effects in a mixed-effects model, various basis functions like
+    splines, etc.)
     
 *** present
-    goal is to show here what's possible and how it works
+    (goal is to show here what's now possible and how it works)
 
     flexible: can use any* function you'd like 
 
     *(as long as it's applied elementwise).
-    
-    composable: works with any Table, including row-oriented tables (except for
-    schema construction...).  split things out into three stages: macro time,
-    schema time, and data time.  example: OnlineStats integration...
 
-    hackable: internal representations are things you can work with and
-    manipulate.  example: [[https://github.com/Nosferican/Econometrics.jl/blob/ac31d9019971dd2aedf8a1b2f519e3f00bf7138b/src/formula.jl][Econometrics.jl pulls out nested formula]] terms to
-    represent endgenous/instrumental variables.  programmatic model comparison
-    by re-arranging formula [[https://github.com/RePsychLing/addFixef/blob/master/addFixef.ipynb][(Laurel Brehm's example from ZiF workshop)]].
+    design splits things out into three stages: macro time, schema time, and
+    data time.
     
-    extensible: MixedModels.jl - random effects terms, nesting syntax,
-    controlling the correlation structure with ~zerocorr~.
+**** composable
+     works with any Table, including row-oriented tables (except for schema
+     construction...).
+
+     example: OnlineStats integration...
+
+**** hackable
+     everything is a term.  every term can take in a table (or row) and return
+     something useful.
+
+     internal representations are things you can work with and manipulate.
+     (basically, run-time term construction, formula manipulation).  example:
+     [[https://github.com/Nosferican/Econometrics.jl/blob/ac31d9019971dd2aedf8a1b2f519e3f00bf7138b/src/formula.jl][Econometrics.jl pulls out nested formula]] terms to represent
+     endgenous/instrumental variables.  programmatic model comparison by
+     re-arranging formula [[https://github.com/RePsychLing/addFixef/blob/master/addFixef.ipynb][(Laurel Brehm's example from ZiF workshop)]].
     
-*** future, 
+**** extensible: 
+     anyone can add "special syntax" using a well-define and documented API.
+     Uses normal Julian mechanisms to adjudicate any competing claims to the same
+     context.  Here's how it works: when the ~@formula~ macro hits a call to a
+     function that's not one of the 4 blessed functions (~~+&*~), it creates a
+     ~FunctionTerm{F}~ where ~F~ is the type of the function.  You can change the
+     interpretation of any term in a specific context at the ~apply_schema~
+     stage, by defining a method ~apply_schema(::T, ::Schema, ::Context)~.  So to
+     override the "default" handling of a call to a function ~f~, all you have to
+     do is define a method ~apply_schema(::FunctionTerm{typeof(f)}, ::Schema,
+     ::Context)~ (where ~Context~ is a type representing the context in which
+     this special syntax is going to apply)
+
+     MixedModels.jl - random effects terms, nesting syntax,
+     controlling the correlation structure with ~zerocorr~.
+    
+*** future
     things people are building: unfold.jl, MixedModels.jl.
 
     under the rubric of "row-oriented" transformations: dropping missing values,
@@ -98,6 +127,8 @@
      for instance, splines need different invariants than are available; not all
      categorical variables are destined for contrast/one-hot encoding; etc.
 
+     composition of "special" syntax and "regular" function calls
+     
      we're hitting the compiler really hard...contributing to that is the fact
      that every non-special call gets compiled into its own anonymous function,
      so even if you run the same formula twice you'll still have to recompile
@@ -105,3 +136,10 @@
      compilation.  and putting type parameters on EVERYTHING allows the compile
      to reason about the structure of the model but...also makes the compiler
      reason about the structure of everything.
+
+** lessons learned
+   tests are great
+
+   more information for the compiler isn't always better
+
+   naming things is hard
