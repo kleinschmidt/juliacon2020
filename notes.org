@@ -48,95 +48,6 @@
    lol this is exactly what I did last time, at least on the intro slide... but
    here maybe it makes sense to expand it out a bit more since I'm explicitly
    focusing on the development process and lessons learned
-*** past: DataFrames.jl
-    focus is on why this wasn't adequate.  not composable (can't use with other
-    table types), not hackable (or not easily, have to hook into a pretty
-    constrained and opaque internal representation), and not extensible (no way
-    to add other syntax)
-
-    recent past was #71 (?)...some good ideas there but ultimately it was
-    completely wrong in a lot of interesting ways.  first was
-    composability...that's been (mostly solved).  second is performance, we're
-    paying a steep penalty for how we're representing function calls, and terms
-    in general (too many type parameters)
-
-    challenge with this DSL: on the one hand, we are using some function calls
-    to have special meaning: ~+~ is feature union, ~&~ is feature interaction,
-    and ~*~ is both.  And ~~~ represents a row-wise binding of a set of response
-    and predictor features.  On the other hand, we'd also like for functions
-    that DON'T have special meaning to "just work".  So, for instance, if you
-    want to regress against a log-transformed response, you should be able to do
-    ~log(y) ~ 1 + a + b + c~ and have it Just Work™ (at least that's what you'd
-    expect coming from R.  On the other other hand, there are many cases where
-    this DSL is too restrictive to capture what you might want to do with your
-    features (examples: instrumental/endogenous variables in econometrics,
-    random effects in a mixed-effects model, various basis functions like
-    splines, etc.)
-    
-*** present
-    (goal is to show here what's now possible and how it works)
-
-    flexible: can use any* function you'd like 
-
-    *(as long as it's applied elementwise).
-
-    design splits things out into three stages: macro time, schema time, and
-    data time.
-    
-**** composable
-     works with any Table, including row-oriented tables (except for schema
-     construction...).
-
-     example: OnlineStats integration...
-
-**** hackable
-     everything is a term.  every term can take in a table (or row) and return
-     something useful.
-
-     internal representations are things you can work with and manipulate.
-     (basically, run-time term construction, formula manipulation).  example:
-     [[https://github.com/Nosferican/Econometrics.jl/blob/ac31d9019971dd2aedf8a1b2f519e3f00bf7138b/src/formula.jl][Econometrics.jl pulls out nested formula]] terms to represent
-     endgenous/instrumental variables.  programmatic model comparison by
-     re-arranging formula [[https://github.com/RePsychLing/addFixef/blob/master/addFixef.ipynb][(Laurel Brehm's example from ZiF workshop)]].
-    
-**** extensible: 
-     anyone can add "special syntax" using a well-define and documented API.
-     Uses normal Julian mechanisms to adjudicate any competing claims to the same
-     context.  Here's how it works: when the ~@formula~ macro hits a call to a
-     function that's not one of the 4 blessed functions (~~+&*~), it creates a
-     ~FunctionTerm{F}~ where ~F~ is the type of the function.  You can change the
-     interpretation of any term in a specific context at the ~apply_schema~
-     stage, by defining a method ~apply_schema(::T, ::Schema, ::Context)~.  So to
-     override the "default" handling of a call to a function ~f~, all you have to
-     do is define a method ~apply_schema(::FunctionTerm{typeof(f)}, ::Schema,
-     ::Context)~ (where ~Context~ is a type representing the context in which
-     this special syntax is going to apply)
-
-     MixedModels.jl - random effects terms, nesting syntax,
-     controlling the correlation structure with ~zerocorr~.
-    
-*** future
-    things people are building: unfold.jl, MixedModels.jl.
-
-    under the rubric of "row-oriented" transformations: dropping missing values,
-    grouping, time series (lead/lag) operations.  these are a bit trickier
-    because we want to support row-oriented tables as first-class citizens
-
-**** design issues: 
-     idea that schema should be model-independent causes all kinds of problems.
-     for instance, splines need different invariants than are available; not all
-     categorical variables are destined for contrast/one-hot encoding; etc.
-
-     composition of "special" syntax and "regular" function calls
-     
-     we're hitting the compiler really hard...contributing to that is the fact
-     that every non-special call gets compiled into its own anonymous function,
-     so even if you run the same formula twice you'll still have to recompile
-     everything.  polymorphism is great but it also leads to a lot of extra
-     compilation.  and putting type parameters on EVERYTHING allows the compile
-     to reason about the structure of the model but...also makes the compiler
-     reason about the structure of everything.
-
 ** lessons learned
    tests are great
 
@@ -145,11 +56,21 @@
    naming things is hard
    
 * outline
-  What is this?  Convert from tabular data (collections of heterogenously typed
-  variables) to something useful for statistical modeling/machine
-  learning/etc. (aka, a numerical array).
+  Who am I?  Un-tenured assistant professor of psychology with too much interest
+  in computers and not enough good sense to stay away from anything that's not
+  going to earn me tenure gold stars.  My goal today is to convince you that we
+  haven't been wasting our time.
 
-  Why?  This is a kind of "last mile" problem between your data
+  What is this?  DSL to convert from tabular data (collections of heterogenously
+  typed variables) to something useful for statistical modeling/machine
+  learning/etc. (aka, a numerical array).  Basic DSL has four operations:
+  - ~y ~ x~ "conditioning"
+  - ~x + z~ feature union
+  - ~x & z~ feature interaction
+  - ~x * z = x + z + z&z~ both union and interaction
+
+  Why?  This is a critical piece of data science infrastructure, a kind of "last
+  mile" problem between the end of our your data
   ingestion/cleaning/preprocessing pipeline and your number crunching.  It's
   annoying and tedious and repetitive and error prone to do it by hand and if
   you mess it up you could end up say mixing up your coding of some variable and
@@ -159,18 +80,149 @@
   dumb things.
 
 ** themes
-   things that people strive for with Julia packages:
-** how does it work
-   specify formula with ~@formula~ macro.  trying to move as much stuff out of
-   this as possible because it's a black box, bad.  this creates a bunch of
-   terms.
+   "Julian" design philosophy seeks packages that are
+   - composable: minimal assumptions about what goes in or comes out; modular
+   - hackable: can muck around with internal representations without relying on
+     weird non-public API
+   - extendable: provides means for other packages to not only USE your package
+     but also EXTEND your package's functionality
+   - (fast: not as big of a deal here, this stage isn't often the bottleneck.
+     just need to be fast enough to not be annoying to users but at the same
+     time, we don't want to create something that CAN'T be fast)
 
-   extract a ~Schema~ that describes the important properties of your data:
-   types, unique values for categorical things
+   These are obviously not mutually exclusive, and in fact I think they overlap
+   a lot.  But can be useful to separate them out
 
-   specialize the formula based on the data schema and (optionally) the type of
-   the model that's the ultimate destination for the data. ~apply_schema~
+** past (~2012 to 2019)
+   DataFrames.jl: ~@formula~ -> ~Terms~ (variable-by-term matrix) ->
+   ~ModelFrame~ (wrapper around Terms and a DataFrame) -> ~ModelMatrix~
 
-   ingest tabular data, producings arrays (or whatever!) with ~modelcols~.
+   - ✘ Composable (DataFrame in, specialized ModelMatrix out)
+   - ✘ Hackable (opaque internal representation of the formula)
+   - ✘ Extendable (DSL syntax rules baked into ~@formula~ / ~Terms~)
+   - ✔ Fast (fast enough anyway)
+   
+   focus is on why this wasn't adequate.  not composable (can't use with other
+   table types), not hackable (or not easily, have to hook into a pretty
+   constrained and opaque internal representation), and not extensible (no way
+   to add other syntax)
 
+*** Taking a step back...
+    three-way bind with this DSL
+
+    on the one hand, we are using some function calls to have special meaning:
+    ~+~ is feature union, ~&~ is feature interaction, and ~*~ is both.  And ~~~
+    represents a row-wise binding of a set of response and predictor features.
+
+    On the other hand, we'd also like for functions that DON'T have special
+    meaning to "just work".  So, for instance, if you want to regress against a
+    log-transformed response, you should be able to do ~log(y) ~ 1 + a + b + c~
+    and have it Just Work™ (at least that's what you'd expect coming from R.  
+
+    On the other other hand, there are many cases where this DSL is too
+    restrictive to capture what you might want to do with your features
+    (examples: instrumental/endogenous variables in econometrics, random effects
+    in a mixed-effects model, various basis functions like splines, etc.)
+   
+** middle ages (2018-2019)
+   the era of "Terms 2.0: Son of Terms", JuliaCon2018
+
+   ~@formula~ -> ~FormulaTerm~ -> ~apply_schema(_, schema)~ -> ~modelcols(_,
+   data)~
+
+   - ✔ composable: any Tables.jl table in, ~Array~ out.
+   - ✔ hackable: terms all the way down (internal representations are all
+     ~<:AbstractTerm~, all of which can convert tables into arrays)
+   - ✘ extendable: we'll talk about this next, mostly solved now
+   - ✘ fast: ¯\_(ツ)_/¯ really hitting the compiler hard (too many type
+     parameters, anonymous functions)
+
+** present
+   (now I want to give you a taste of what's now possible and how it works)
+
+   flexible: can use any* function you'd like 
+
+   *(as long as it's applied elementwise).
+
+   design splits things out into three stages: macro time, schema time, and
+   data time.
+    
+*** composable
+    works with any Table, including row-oriented tables (except for schema
+    construction...).
+
+    example: OnlineStats integration...
+
+*** hackable
+    everything is a term.  every term can take in a table (or row) and return
+    something useful.
+
+    internal representations are things you can work with and manipulate.
+    (basically, run-time term construction, formula manipulation).  example:
+    [[https://github.com/Nosferican/Econometrics.jl/blob/ac31d9019971dd2aedf8a1b2f519e3f00bf7138b/src/formula.jl][Econometrics.jl pulls out nested formula]] terms to represent
+    endgenous/instrumental variables.  programmatic model comparison by
+    re-arranging formula [[https://github.com/RePsychLing/addFixef/blob/master/addFixef.ipynb][(Laurel Brehm's example from ZiF workshop)]].
+    
+*** extensible: 
+    anyone can add "special syntax" using a well-define and documented API.
+    Uses normal Julian mechanisms to adjudicate any competing claims to the same
+    context.  Here's how it works: when the ~@formula~ macro hits a call to a
+    function that's not one of the 4 blessed functions (~~+&*~), it creates a
+    ~FunctionTerm{F}~ where ~F~ is the type of the function.  You can change the
+    interpretation of any term in a specific context at the ~apply_schema~
+    stage, by defining a method ~apply_schema(::T, ::Schema, ::Context)~.  So to
+    override the "default" handling of a call to a function ~f~, all you have to
+    do is define a method ~apply_schema(::FunctionTerm{typeof(f)}, ::Schema,
+    ::Context)~ (where ~Context~ is a type representing the context in which
+    this special syntax is going to apply)
+
+    MixedModels.jl - random effects terms, nesting syntax,
+    controlling the correlation structure with ~zerocorr~.
+    
+** future
+   things people are building: unfold.jl, MixedModels.jl.
+
+   under the rubric of "row-oriented" transformations: dropping missing values,
+   grouping, time series (lead/lag) operations.  these are a bit trickier
+   because we want to support row-oriented tables as first-class citizens
+
+*** design issues: 
+    idea that schema should be model-independent causes all kinds of problems.
+    for instance, splines need different invariants than are available; not all
+    categorical variables are destined for contrast/one-hot encoding; etc.
+
+    composition of "special" syntax and "regular" function calls
+     
+    we're hitting the compiler really hard...contributing to that is the fact
+    that every non-special call gets compiled into its own anonymous function,
+    so even if you run the same formula twice you'll still have to recompile
+    everything.  polymorphism is great but it also leads to a lot of extra
+    compilation.  and putting type parameters on EVERYTHING allows the compile
+    to reason about the structure of the model but...also makes the compiler
+    reason about the structure of everything.
+
+** present (~2018 to today)
+
+   
+*** how does it work
+    specify formula with ~@formula~ macro.  trying to move as much stuff out of
+    this as possible because it's a black box, bad.  this creates a bunch of
+    terms.
+
+    extract a ~Schema~ that describes the important properties of your data:
+    types, unique values for categorical things
+
+    specialize the formula based on the data schema and (optionally) the type of
+    the model that's the ultimate destination for the data. ~apply_schema~
+
+    ingest tabular data, producings arrays (or whatever!) with ~modelcols~.
+
+
+*** is it working?  some success stories
+    MixedModels.jl - fast and flexible, builds on the StatsModels API
+    liberally.  We can prototype and implement new syntax very quickly!  Lisa de
+    Bruijn: power simulations that used to run overnight are now on the order of
+    seconds to minutes.
+   
+** future
 
