@@ -54,7 +54,9 @@
    more information for the compiler isn't always better
 
    naming things is hard
-   
+** show don't tell
+   orgnaize the main part of the talk around examples of how things work now,
+   one for each of the main criteria.
 * outline
   Who am I?  Un-tenured assistant professor of psychology with too much interest
   in computers and not enough good sense to stay away from anything that's not
@@ -157,6 +159,8 @@
     everything is a term.  every term can take in a table (or row) and return
     something useful.
 
+    example: run-time formula creation and manipulation
+
     internal representations are things you can work with and manipulate.
     (basically, run-time term construction, formula manipulation).  example:
     [[https://github.com/Nosferican/Econometrics.jl/blob/ac31d9019971dd2aedf8a1b2f519e3f00bf7138b/src/formula.jl][Econometrics.jl pulls out nested formula]] terms to represent
@@ -176,8 +180,8 @@
     ::Context)~ (where ~Context~ is a type representing the context in which
     this special syntax is going to apply)
 
-    MixedModels.jl - random effects terms, nesting syntax,
-    controlling the correlation structure with ~zerocorr~.
+    MixedModels.jl - random effects terms, nesting syntax, controlling the
+    correlation structure with ~zerocorr~.
     
 ** future
    things people are building: unfold.jl, MixedModels.jl.
