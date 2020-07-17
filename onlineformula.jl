@@ -23,18 +23,12 @@ end
 OnlineStatsBase.nobs(f::Formulated) = nobs(f.stat)
 
 
-a = rand(100)
-b = rand(100)
-β = [1.; 2; 3]
-y = hcat(ones(100), a, b) * β .+ randn(100).*.01
+a, b = rand(100), rand(100);
+β = [1.; 2; 3];
+y = hcat(ones(100), a, b) * β .+ randn(100).*.01;
 
-d = (y=y, a=a, b=b)
+d = (y=y, a=a, b=b);
+d_rows = Tables.rowtable(d);
 
-f = @formula(y ~ 1 + a + b)
-
-d_rows = Tables.rowtable(d)
-
-ff = apply_schema(f, schema(d_rows))
-
-
-fit!(Formulated(ff, LinReg()), d_rows)
+f = apply_schema(@formula(y ~ 1 + a + b), schema(d_rows));
+fit!(Formulated(f, LinReg()), d_rows)
