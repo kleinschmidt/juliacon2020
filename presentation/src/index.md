@@ -7,7 +7,7 @@ class: middle
 ## Dave Kleinschmidt — [`@kleinschmidt`](https://github.com/kleinschmidt)
 
 ### Rutgers University (New Brunswick)
-### JuliaCon 2020 - [davekleinschmidt.com/juliacon2020/](https://www.davekleinschmidt.com/juliacon2020/)
+### JuliaCon 2020 — [davekleinschmidt.com/juliacon2020/](https://www.davekleinschmidt.com/juliacon2020/) — ([Remark.jl source](https://github.com/kleinschmidt/juliacon2020))
 
 ]
 
