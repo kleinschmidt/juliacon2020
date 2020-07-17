@@ -7,7 +7,7 @@ class: middle
 ## Dave Kleinschmidt — [`@kleinschmidt`](https://github.com/kleinschmidt)
 
 ### Rutgers University (New Brunswick)
-### JuliaCon 2020
+### JuliaCon 2020 - [davekleinschmidt.com/juliacon2020/](https://www.davekleinschmidt.com/juliacon2020/)
 
 ]
 
@@ -16,24 +16,6 @@ class: middle
 Thanks for joining me here, whatever "here" means for you.  I'm going to tell
 you today about some progress we've made in developing StatsModels.jl and also
 some mistakes we've made along the way.
-
----
-# Who am I
-
-Procrastinating ~~PhD student~~ un-tenured Assistant Professor of Psychology
-
---
-
-Run the Learning, Adaptation, and Perception (LeAP) Lab at Rutgers University
-
---
-
-Data janitor/machine learning/Bayesian stats/computational cognitive modeling
-
---
-
-Interested in creating **robuts**, **powerful**, **intuitive** tools for
-**humans** to analyze data
 
 ---
 
@@ -46,20 +28,9 @@ Models need a **numerical representation**
 StatsModels.jl provides **`@formula` domain-specific language** to specify
 **table-to-array** transformations for modeling
 
-Critical "last-mile" step in between data pre-processing and your model
-
 ???
 
-Why should you the distracted attendee of JuliaCon2020 extremely online care
-about this?
-
-Almost didn't submit a talk because honestly there's not a HUGE amount more to
-talk about above and beyond what you saw in 2018.  but with 1 year of pretty
-intensive code review and discussion and another year to see how some of our
-choices shook out, I think it's worthwhile to revisit some of those choices,
-where they went wrong and what we got right.  And in particular I want to talk
-about what a distinctly Julian approach to this problem looks like, because
-that's really influenced the design...
+Critical "last-mile" step in between data pre-processing and your model
 
 ---
 
@@ -72,9 +43,10 @@ a = rand(10)
 b = repeat(["argle", "bargle"], outer=5)
 y = 1.0 .+ 2a + 3(b .== "bargle") + 4(a .* (b .== "bargle"))
 
-# a table:
+# we get a table:
 data = (a=a, b=b, y=y)
 
+# what's the relationship between y, a, and b?
 f = @formula(y ~ 1 + a + b + a&b)
 sch = schema(data)
 y, X = modelcols(apply_schema(f, sch), data)
@@ -83,6 +55,8 @@ y, X = modelcols(apply_schema(f, sch), data)
 ```
 
 ???
+
+I'm not going to say a TON about the DSL here, because 2018...
 
 A table: a is Floats, b is strings, y is some linear combination of these.
 
@@ -93,11 +67,11 @@ A table: a is Floats, b is strings, y is some linear combination of these.
 Julia is a good language for these kinds of infrastructure problems because it
 lends itself to packages that are
 
-1. Composable - support any Tables.jl table (row or column), arbitrary Julia
+1. **Composable** — support any Tables.jl table (row or column), arbitrary Julia
    functions in the `@formula`
-2. Hackable - muck around with the `@formula` without relying on weird, opaque,
+2. **Hackable** — muck around with the `@formula` without relying on weird, opaque,
    non-public internals
-3. Extendable - provide means to not just *use* `@formula` but *extend* it
+3. **Extendable** —  provide means to not just *use* `@formula` but *extend* it
 
 ???
 
@@ -111,9 +85,9 @@ Obviously not mutually exclusive.
 
 `@formula` → `Terms` (variable-by-term matrix) → `ModelFrame` (DataFrame wrapper) → `ModelMatrix`
 
-- ✘ Composable (`DataFrame` in, specialized `ModelMatrix` out)
-- ✘ Hackable (opaque internal representation of the formula)
-- ✘ Extendable (DSL syntax rules baked into `@formula` / `Terms`)
+- .red[✘ **Composable**]—`DataFrame` in, specialized `ModelMatrix` out
+- .red[✘ **Hackable**]—opaque internal representation of the formula
+- .red[✘ **Extendable**]—DSL syntax rules baked into `@formula` / `Terms`
 
 --
 
@@ -122,13 +96,13 @@ Obviously not mutually exclusive.
 
 `@formula` → `AbstractTerm`s → `apply_schema` (+`schema`) → `modelcols` (+table/row) → `AbstractArray`
 
-- ✔ Composable (Tables.jl in, `AbstractArray` out, arbitrary functions mosly work in `@formula`)
-- ✔ Hackable (Everything is an `AbstractTerm`)
-- ✔/✘ Extendable (Anyone can claim syntax as "special" at any point)
+- .green[✔ **Composable**]—Tables.jl in, `AbstractArray` out, arbitrary functions mosly work in `@formula`
+- .green[✔ **Hackable**]—Everything is an `AbstractTerm`
+- .red[✔/✘ **Extendable**]—Anyone can claim syntax as "special" at any point
 
 --
 
-**2019--_present_**: `¯\_(ツ)_/¯`
+**2019--_future_**: `¯\_(ツ)_/¯`
 
 - Fixing mistakes in extending `@formula` syntax
 - What about performance??
@@ -147,11 +121,10 @@ about some of the design challenges we're still grappling with here.
 Supports any [Tables.jl](https://github.com/JuliaData/Tables.jl) data source.
 
 Both "column-oriented" ("`NamedTuple` of `Vector`s") and "row-oriented"
-("`Vector` of `NamedTuple`s")
+("`Vector` of `NamedTuple`s")<superscript>*</superscript>
 
---
-
-(The caveat: schema extraction converts everything to columns right now)
+.footnote[<superscript>*</superscript>caveat: schema extraction converts
+everything to columns right now)]
 
 ---
 
@@ -328,6 +301,11 @@ fit!(Formulated(f, LinReg()), d_rows)
 
 Or nonlinear transformations
 
+As an aside: this is why functions in a formula have to apply elementwise,
+because we can't assume you have all the data available at once.
+
+now, this works, but needs a bit of finessing
+
 ---
 
 # Hackable
@@ -356,9 +334,10 @@ modelcols(y_term, d)
 
 # Hackable
 
-Multiple dispatch: terms can be combined with normal Julia functions.
+Terms can be combined with normal Julia functions:
 
 ```@example hack1
+f = apply_schema(@formula(y ~ 1 + a + b), schema(d))
 intercept, a_term, b_term = f.rhs.terms
 ```
 
@@ -374,6 +353,11 @@ ab_interaction = a_term & b_term
 y, X = modelcols(y_term ~ f.rhs + ab_interaction, d)
 X
 ```
+
+???
+
+Take this apart, create some modified version, put it back together, works just
+like before
 
 ---
 

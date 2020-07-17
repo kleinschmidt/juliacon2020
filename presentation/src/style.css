@@ -87,7 +87,11 @@ a {
 }
 
 .red {
-    color: #f00;
+    color: #c00;
+}
+
+.green {
+    color: #0a0;
 }
 
 .dim {
