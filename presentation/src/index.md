@@ -11,6 +11,12 @@ class: middle
 
 ]
 
+???
+
+Thanks for joining me here, whatever "here" means for you.  I'm going to tell
+you today about some progress we've made in developing StatsModels.jl and also
+some mistakes we've made along the way.
+
 ---
 # Who am I
 
@@ -76,20 +82,16 @@ y, X = modelcols(apply_schema(f, sch), data)
 β̂ = X \ y
 ```
 
+???
+
+A table: a is Floats, b is strings, y is some linear combination of these.
+
 ---
 
 # Three goals
 
 Julia is a good language for these kinds of infrastructure problems because it
 lends itself to packages that are
-
-1. Composable
-2. Hackable
-3. Extendable
-
---
-
-## For this project that means...
 
 1. Composable - support any Tables.jl table (row or column), arbitrary Julia
    functions in the `@formula`
@@ -161,8 +163,6 @@ Both "column-oriented" ("`NamedTuple` of `Vector`s") and "row-oriented"
 > to hold in memory. OnlineStats processes observations one by one and all
 > algorithms use O(1) memory."
 
---
-
 ```@example online
 using OnlineStats
 
@@ -180,6 +180,11 @@ fit!(LinReg(), zip(eachrow(X), y))
 - is in a table?
 - has strings?
 - needs non-linear transformations applied?
+
+???
+
+example from the OnlineStats docs.  I want to show you how simnple it is to
+combine the strengths of StatsModels and OnlineStats...
 
 ---
 
@@ -225,7 +230,10 @@ a, b = rand(100), rand(100)
 X = hcat(ones(100), a, b)
 y = X * β .+ randn(100).*.01
 
+# a table
 d = (y=y, a=a, b=b)
+
+# iterate NamedTuples
 d_rows = Tables.rowtable(d)
 first(d_rows)
 ```
@@ -242,21 +250,25 @@ fit!(Formulated(f, LinReg()), d_rows)
 Wrap any `OnlineStat` to take in tabular data...even with categorical variables!
 
 ```@example online
-a, b, c = rand(100), rand(100), repeat(["argle", "bargle"], outer=50)
-β = [1.; 2; 3; 4]
-#                         vvvvvvvvvvvv manually construct indicator variable for c
-X = hcat(ones(100), a, b, c.=="bargle")
+a, b = rand(100), repeat(["argle", "bargle"], outer=50)
+β = [1.; 2; 3]
+#                      vvvvvvvvvvvv manually construct indicator variable for c
+X = hcat(ones(100), a, b.=="bargle")
 y = X * β .+ randn(100).*.01
 
-d = (y=y, a=a, b=b, c=c)
+d = (y=y, a=a, b=b)
 d_rows = Tables.rowtable(d)
 first(d_rows)
 ```
 
 ```@example online
-f = apply_schema(@formula(y ~ 1 + a + b + c), schema(d_rows));
+f = apply_schema(@formula(y ~ 1 + a + b), schema(d_rows));
 fit!(Formulated(f, LinReg()), d_rows)
 ```
+
+???
+
+This works even if you have strings in your data...
 
 ---
 
@@ -266,22 +278,25 @@ Wrap any `OnlineStat` to take in tabular data...even with categorical
 variables...that ineract with others!
 
 ```@example online
-a, b, c = rand(100), rand(100), repeat(["argle", "bargle"], outer=50)
-β = [1.; 2; 3; 4; 5]
-#                                       vvvvvvvvvvvvvvvvvvv effect of a, modulated by "bargle"
-X = hcat(ones(100), a, b, c.=="bargle", a .* (c.=="bargle"))
+a, b = rand(100), repeat(["argle", "bargle"], outer=50)
+β = [1.; 2; 3; 4]
+#                                    vvvvvvvvvvvvvvvvvvv effect of a, modulated by "bargle"
+X = hcat(ones(100), a, b.=="bargle", a .* (b.=="bargle"))
 y = X * β .+ randn(100).*.01
 
-d = (y=y, a=a, b=b, c=c)
+d = (y=y, a=a, b=b)
 d_rows = Tables.rowtable(d)
 first(d_rows)
 ```
 
 ```@example online
-f = apply_schema(@formula(y ~ 1 + a + b + c + a&c), schema(d_rows));
+f = apply_schema(@formula(y ~ 1 + a + b + a&b), schema(d_rows));
 fit!(Formulated(f, LinReg()), d_rows)
 ```
 
+???
+
+Interactions between variables
 
 ---
 
@@ -291,23 +306,27 @@ Wrap any `OnlineStat` to take in tabular data...even with (lazily applied)
 functions!
 
 ```@example online
-a, b, c = rand(100), rand(100), repeat(["argle", "bargle"], outer=50)
+a, b = rand(100), repeat(["argle", "bargle"], outer=50)
 β = [1.; 2; 3; 4]
-X = hcat(ones(100), a, b, c.=="bargle")
+X = hcat(ones(100), a, b.=="bargle", a .* (b.=="bargle"))
 
 #   vvv exponential link function
 y = exp.(X * β .+ randn(100).*.01)
 
-d = (y=y, a=a, b=b, c=c)
+d = (y=y, a=a, b=b)
 d_rows = Tables.rowtable(d)
 first(d_rows)
 ```
 
 ```@example online
 #                         vvv inverse link function lazily applied
-f = apply_schema(@formula(log(y) ~ 1 + a + b + c), schema(d_rows))
+f = apply_schema(@formula(log(y) ~ 1 + a + b + a&b), schema(d_rows))
 fit!(Formulated(f, LinReg()), d_rows)
 ```
+
+???
+
+Or nonlinear transformations
 
 ---
 
@@ -321,9 +340,7 @@ d = (y=rand(10), a=rand(10), b=repeat(["argle", "bargle"], outer=5))
 f = apply_schema(@formula(y ~ 1 + a + b), schema(d))
 ```
 
----
-
-# Hackable
+--
 
 Any `AbstractTerm` can transform a table/row via `modelcols(term, data)`.
 
