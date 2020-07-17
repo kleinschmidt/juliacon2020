@@ -1,3 +1,36 @@
+class: middle
+
+.slide-title[
+
+# StatsModels.jl: Mistakes were made
+
+## Dave Kleinschmidt — [`@kleinschmidt`](https://github.com/kleinschmidt)
+
+### Rutgers University (New Brunswick)
+### JuliaCon 2020
+
+]
+
+---
+# Who am I
+
+Procrastinating ~~PhD student~~ un-tenured Assistant Professor of Psychology
+
+--
+
+Run the Learning, Adaptation, and Perception (LeAP) Lab at Rutgers University
+
+--
+
+Data janitor/machine learning/Bayesian stats/computational cognitive modeling
+
+--
+
+Interested in creating **robuts**, **powerful**, **intuitive** tools for
+**humans** to analyze data
+
+---
+
 # What is this about
 
 Data is often tabular: **named variables** (columns) with **different types**
@@ -29,8 +62,11 @@ that's really influenced the design...
 ```@example
 using StatsModels
 
-a, b = rand(10), repeat(["argle", "bargle"], outer=5)
-y = 1.0 .+ 2a + 3(b .== "bargle") + 4a .* (b .== "bargle")
+a = rand(10)
+b = repeat(["argle", "bargle"], outer=5)
+y = 1.0 .+ 2a + 3(b .== "bargle") + 4(a .* (b .== "bargle"))
+
+# a table:
 data = (a=a, b=b, y=y)
 
 f = @formula(y ~ 1 + a + b + a&b)
@@ -149,7 +185,8 @@ fit!(LinReg(), zip(eachrow(X), y))
 
 # Composable
 
-Wrap any `OnlineStat` to take in tabular data:
+StatsModels.jl and OnlineStats.jl have a small API surface, so we can
+**compose** them:
 
 ```@example online
 using OnlineStats, OnlineStatsBase, StatsModels, Tables
@@ -202,13 +239,13 @@ fit!(Formulated(f, LinReg()), d_rows)
 
 # Composable
 
-Wrap any `OnlineStat` to take in tabular data...even with categorical values!
+Wrap any `OnlineStat` to take in tabular data...even with categorical variables!
 
 ```@example online
 a, b, c = rand(100), rand(100), repeat(["argle", "bargle"], outer=50)
-β = [1.; 2; 3; 4; 5]
-#                         vvvvvvvvvvvvvvvvvvvvvvvvv manually construct indicators for c
-X = hcat(ones(100), a, b, c.=="argle", c.=="bargle")
+β = [1.; 2; 3; 4]
+#                         vvvvvvvvvvvv manually construct indicator variable for c
+X = hcat(ones(100), a, b, c.=="bargle")
 y = X * β .+ randn(100).*.01
 
 d = (y=y, a=a, b=b, c=c)
@@ -218,6 +255,30 @@ first(d_rows)
 
 ```@example online
 f = apply_schema(@formula(y ~ 1 + a + b + c), schema(d_rows));
+fit!(Formulated(f, LinReg()), d_rows)
+```
+
+---
+
+# Composable
+
+Wrap any `OnlineStat` to take in tabular data...even with categorical
+variables...that ineract with others!
+
+```@example online
+a, b, c = rand(100), rand(100), repeat(["argle", "bargle"], outer=50)
+β = [1.; 2; 3; 4; 5]
+#                                       vvvvvvvvvvvvvvvvvvv effect of a, modulated by "bargle"
+X = hcat(ones(100), a, b, c.=="bargle", a .* (c.=="bargle"))
+y = X * β .+ randn(100).*.01
+
+d = (y=y, a=a, b=b, c=c)
+d_rows = Tables.rowtable(d)
+first(d_rows)
+```
+
+```@example online
+f = apply_schema(@formula(y ~ 1 + a + b + c + a&c), schema(d_rows));
 fit!(Formulated(f, LinReg()), d_rows)
 ```
 
@@ -231,8 +292,8 @@ functions!
 
 ```@example online
 a, b, c = rand(100), rand(100), repeat(["argle", "bargle"], outer=50)
-β = [1.; 2; 3; 4; 5]
-X = hcat(ones(100), a, b, c.=="argle", c.=="bargle")
+β = [1.; 2; 3; 4]
+X = hcat(ones(100), a, b, c.=="bargle")
 
 #   vvv exponential link function
 y = exp.(X * β .+ randn(100).*.01)
@@ -243,7 +304,7 @@ first(d_rows)
 ```
 
 ```@example online
-#                         vvv inverse link function
+#                         vvv inverse link function lazily applied
 f = apply_schema(@formula(log(y) ~ 1 + a + b + c), schema(d_rows))
 fit!(Formulated(f, LinReg()), d_rows)
 ```
@@ -319,9 +380,9 @@ print(build_f(:y, [1, :a, :b, term(:a)&term(:b)]))
 
 --- 
 
-# Extendable - proposal
+# Extendable - Terms 2.0: Son of Terms
 
-Original proposal from 2018/Terms 2.0: Son of Terms
+Original proposal from 2018
 
 Example: using `poly(x, 4)` to generate a 4th order polynomial basis from `x`
 
@@ -336,6 +397,14 @@ Make **any** function special by doing one or more of
 --
 
 Problem with this: **who owns `poly` in the `@formula`?**
+
+--
+
+What happens when you load another package with `is_special(::Val{:poly}) =
+false`?
+
+Or (God forbid) two packages define `capture_call(::typeof(^), ...)` to do
+different things?
 
 ---
 
@@ -458,8 +527,12 @@ Better representation of non-special calls (`FunctionTerm`)
 
 Make row-wise table support first-class:
 - online/parallel `Schema` extraction
-- in-place `modelcols!` 
+- in-place `modelcols!`
 
 --
 
 Context-aware `Schema` creation
+
+-- 
+
+Modeling API, row-oriented transformations (drop missings, lead/lag)
